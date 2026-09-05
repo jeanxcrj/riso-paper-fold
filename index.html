@@ -83,7 +83,7 @@ input[type=range]:hover::-webkit-slider-thumb{background:var(--accent)}
 
 /* ---------- stage ---------- */
 #stage{position:relative;overflow:hidden;background:var(--stage)}
-canvas{display:block;width:100%;height:100%;cursor:grab}
+canvas{display:block;width:100%;height:100%;cursor:grab;touch-action:none}
 canvas.drag{cursor:grabbing}
 /* z-index is load-bearing: the WebGL canvas is composited onto its own
    layer, so a positioned sibling without a stacking context paints under it. */
@@ -97,6 +97,20 @@ canvas.drag{cursor:grabbing}
 #drop{position:absolute;inset:0;display:none;place-items:center;background:rgba(238,237,235,.86);border:1px dashed #bdbcb9;font-size:11px;letter-spacing:0.1em;text-transform:uppercase}
 #drop.on{display:grid}
 #err{position:absolute;inset:20px;display:none;white-space:pre-wrap;font-size:11px;color:#7a1010;background:#fff;padding:16px;overflow:auto}
+
+/* ---------- narrow screens ----------
+   The sheet takes the top of the screen and the controls stack beneath it.
+   Sunlight is moved back into that stack by placeSun(), since a floating
+   card would cover most of a phone-sized render. */
+@media (max-width:760px){
+  #app{grid-template-columns:1fr;grid-template-rows:48vh 1fr;height:100vh;height:100dvh}
+  #stage{grid-row:1;min-height:0}                     /* the sheet leads */
+  #panel{grid-row:2;border-right:0;border-top:1px solid var(--rule);min-height:0}
+  #secSun{position:static;width:auto;z-index:auto;box-shadow:none;
+    border:0;border-bottom:1px solid var(--rule);border-radius:0;padding:13px 16px 15px}
+  #gizmo{width:82px;height:82px;right:10px;bottom:10px}
+  #foot{padding:10px 14px}
+}
 </style>
 
 <div id="app">
@@ -1183,6 +1197,14 @@ const sunSeg=$('#sunSeg');
   b.addEventListener('click',()=>{P.sun=i;syncSun();requestRender()});
   sunSeg.append(b);
 });
+const mqNarrow = matchMedia('(max-width:760px)');
+function placeSun(){
+  const sun=$('#secSun');
+  if(mqNarrow.matches){ if(sun.parentElement!==$('#scroll')) $('#scroll').append(sun); }
+  else if(sun.parentElement!==$('#stage')) $('#stage').insertBefore(sun,$('#drop'));
+}
+mqNarrow.addEventListener('change',placeSun);
+
 function syncSun(){
   [...sunSeg.children].forEach((b,i)=>b.dataset.on=(i===(P.sun?1:0))?'1':'0');
   $('#secSun').dataset.off=P.sun?'0':'1';
@@ -1290,19 +1312,45 @@ window.addEventListener('keydown',e=>{
   if(e.key==='s'||e.key==='S'){P.sun=P.sun?0:1;syncSun();requestRender()}
 });
 
-let drag=null;
-cv.addEventListener('pointerleave',()=>{uncoilTo=0});
-cv.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,rx:P.axisX,ry:P.axisY};
-  cv.setPointerCapture(e.pointerId);cv.classList.add('drag')});
+/* A mouse uncoils the sheet by hovering it. A finger has no hover, so a tap
+   on the sheet toggles the same thing — and a tap off it coils back up.
+   Anything that travels far enough is a tilt drag, not a tap. */
+let drag=null, pinch=null;
+const pts=new Map();
+const TAP_SLOP=9;
+const spread=()=>{const[a,b]=[...pts.values()];return Math.hypot(a.x-b.x,a.y-b.y)};
+
+cv.addEventListener('pointerleave',e=>{ if(e.pointerType==='mouse') uncoilTo=0; });
+cv.addEventListener('pointerdown',e=>{
+  pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  cv.setPointerCapture(e.pointerId);
+  if(pts.size===2){ drag=null; cv.classList.remove('drag'); pinch={d:spread()||1,z:P.zoom}; return; }
+  if(pts.size>2) return;
+  drag={x:e.clientX,y:e.clientY,rx:P.axisX,ry:P.axisY,far:0,touch:e.pointerType!=='mouse'};
+  cv.classList.add('drag');
+});
 cv.addEventListener('pointermove',e=>{
-  if(!drag){ uncoilTo=overSheet(e.clientX,e.clientY)?1:0; return; }
+  if(pts.has(e.pointerId)) pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pinch&&pts.size===2){
+    P.zoom=clamp(pinch.z*spread()/pinch.d,0.35,3.2); requestRender(); return;
+  }
+  if(!drag){ if(e.pointerType==='mouse') uncoilTo=overSheet(e.clientX,e.clientY)?1:0; return; }
+  drag.far=Math.max(drag.far,Math.hypot(e.clientX-drag.x,e.clientY-drag.y));
+  if(drag.touch&&drag.far<TAP_SLOP) return;          // still might turn out to be a tap
   P.axisY=clamp(drag.ry+(e.clientX-drag.x)*0.30,-75,75);
   P.axisX=clamp(drag.rx-(e.clientY-drag.y)*0.30,-75,75);
   inputs.axisX.inp.value=P.axisX; inputs.axisX.show();
   inputs.axisY.inp.value=P.axisY; inputs.axisY.show();
   requestRender();
 });
-['pointerup','pointercancel'].forEach(ev=>cv.addEventListener(ev,()=>{drag=null;cv.classList.remove('drag')}));
+['pointerup','pointercancel'].forEach(ev=>cv.addEventListener(ev,e=>{
+  pts.delete(e.pointerId);
+  if(pts.size<2) pinch=null;
+  if(drag&&drag.touch&&drag.far<TAP_SLOP&&ev==='pointerup'){
+    uncoilTo=overSheet(e.clientX,e.clientY)?(uncoilTo?0:1):0;
+  }
+  if(pts.size===0){ drag=null; cv.classList.remove('drag'); }
+}));
 cv.addEventListener('dblclick',()=>{P.axisX=0;P.axisY=0;P.axisSpin=0;syncSliders();requestRender()});
 cv.addEventListener('wheel',e=>{e.preventDefault();P.zoom=clamp(P.zoom*Math.exp(-e.deltaY*0.0012),0.35,3.2);requestRender()},{passive:false});
 window.addEventListener('resize',()=>{resize(false);requestRender()});
@@ -1312,7 +1360,7 @@ try{
   const q=new URLSearchParams(location.search);
   for(const [k,v] of q) if(k in P) P[k]=(k==='mode')?v:parseFloat(v);
   if(OFF_MODES.has(P.mode)) P.mode='corner';
-  syncModes();syncInk();syncSun();syncSliders();
+  syncModes();syncInk();syncSun();syncSliders();placeSun();
   resize(true);
   uploadImage(defaultImage());
   frame();
