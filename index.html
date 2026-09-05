@@ -139,7 +139,7 @@ const P = {
   inkN:1, inks:['#4a2fd0','#ff48b0','#ffe800'],
   paper:0.5, backdrop:0.5, exposure:0.5,
   sun:0, sunAmt:0.62, sunSize:0.5, sunSoft:0.42, sunSpeed:0.45,
-  axisX:-13, axisY:16, axisSpin:-7, zoom:1
+  axisX:0, axisY:16, axisSpin:-7, zoom:1
 };
 
 const SLIDERS = {
@@ -1208,7 +1208,7 @@ function randomize(){
   P.thick=0.15+rnd()*0.55;
   P.translu=0.2+rnd()*0.6;
   const swing=18+52*P.distort;
-  P.axisX=(rnd()*2-1)*swing;
+  P.axisX=0;                             // tilt stays level; drag it if you want otherwise
   P.axisY=(rnd()*2-1)*swing;
   P.axisSpin=(rnd()*2-1)*40*P.random;
   if(rnd()<0.45){
