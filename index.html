@@ -44,8 +44,8 @@ body{margin:0;background:var(--stage);color:var(--ink);font-family:var(--face);o
 #scroll::-webkit-scrollbar-thumb{background:var(--ghost);border:3px solid var(--panel)}
 
 .sec{border-bottom:1px solid var(--rule);padding:13px 16px 15px}
-.sec>h2{margin:0 0 11px;font-size:9px;letter-spacing:0.14em;color:var(--dim);text-transform:uppercase;font-weight:500;display:flex;justify-content:space-between}
-.sec>h2 b{color:#bdbcb9;font-weight:500;letter-spacing:0.02em}
+.sec>h2{margin:0 0 11px;font-size:9px;letter-spacing:0.05em;color:var(--dim);text-transform:uppercase;font-weight:500;display:flex;justify-content:space-between}
+.sec>h2 b{color:#bdbcb9;font-weight:500;letter-spacing:0.01em}
 
 .modes{display:grid;grid-template-columns:1fr 1fr;gap:4px}
 .mode{font:inherit;font-size:9.5px;letter-spacing:-0.02em;padding:7px 6px;background:#fff;border:1px solid var(--rule);border-radius:var(--radius);color:#3d3d3b;cursor:pointer;text-align:left;transition:background .12s,color .12s}
@@ -85,6 +85,11 @@ input[type=range]:hover::-webkit-slider-thumb{background:var(--accent)}
 #stage{position:relative;overflow:hidden;background:var(--stage)}
 canvas{display:block;width:100%;height:100%;cursor:grab}
 canvas.drag{cursor:grabbing}
+/* z-index is load-bearing: the WebGL canvas is composited onto its own
+   layer, so a positioned sibling without a stacking context paints under it. */
+#secSun{position:absolute;top:14px;right:14px;width:214px;z-index:2;background:var(--panel);
+  border:1px solid var(--rule);border-radius:var(--radius);padding:12px 14px 14px;
+  box-shadow:0 1px 3px rgba(0,0,0,.045)}
 #gizmo{position:absolute;right:16px;bottom:36px;width:112px;height:112px;pointer-events:none;
   mix-blend-mode:multiply;transition:opacity .15s}
 #gizmo.off{opacity:0}
@@ -113,10 +118,6 @@ canvas.drag{cursor:grabbing}
         <div class="inks" id="inks"></div>
         <div class="swatches" id="swatches"></div>
       </div>
-      <div class="sec" id="secSun"><h2>Sunlight</h2>
-        <div class="seg" id="sunSeg"></div>
-      </div>
-      <div class="sec" id="secStock"><h2>Stock</h2></div>
     </div>
     <div id="foot">
       <button class="wide" id="bRand">Randomize ⏎</button>
@@ -127,6 +128,9 @@ canvas.drag{cursor:grabbing}
   <main id="stage">
     <canvas id="gl"></canvas>
     <svg id="gizmo" viewBox="0 0 112 112"></svg>
+    <div class="sec" id="secSun"><h2>Sunlight</h2>
+      <div class="seg" id="sunSeg"></div>
+    </div>
     <div id="drop">release to print</div>
     <div id="err"></div>
   </main>
@@ -173,8 +177,6 @@ const SLIDERS = {
     ['folds','Fold count',1,8,1,v=>v|0],
     ['sharp','Fold sharpness',0,1,0.01],
     ['distort','Distortion',0,1,0.01],
-    ['random','Randomness',0,1,0.01],
-    ['thick','Paper thickness',0,1,0.01],
     ['translu','Paper translucency',0,1,0.01],
     ['shadow','Shadow strength',0,1,0.01],
   ],
@@ -196,11 +198,6 @@ const SLIDERS = {
     ['sunSoft','Penumbra',0,1,0.01],
     ['sunSpeed','Drift speed',0,1,0.01,v=>v<0.005?'still':v.toFixed(2).replace(/^0\./,'.')],
   ],
-  secStock:[
-    ['exposure','Exposure',0,1,0.01],
-    ['paper','Paper tone',0,1,0.01],
-    ['backdrop','Backdrop',0,1,0.01],
-  ]
 };
 
 /* ============================================================
