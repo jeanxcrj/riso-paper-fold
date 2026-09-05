@@ -5,7 +5,7 @@
 :root{
   /* Palette carried over from the jeanxcrj.com portfolio. */
   --panel:#ffffff; --ink:#0e0e0e; --dim:#8b8b88; --rule:#e4e3e1;
-  --stage:#eeedeb; --ghost:#d9d9d6; --hover:#e6e5e2; --accent:#6a5ae8;
+  --stage:#ffffff; --ghost:#d9d9d6; --hover:#e6e5e2; --accent:#6a5ae8;
   --radius:4px;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
   --face: 'Milling', var(--mono);
@@ -165,7 +165,7 @@ const P = {
   thick:0.34, translu:0.46, shadow:0.68,
   grain:0.5, halftone:1.45, bleed:0.42, reg:0.32, contrast:0.52,
   inkN:1, inks:['#6a5ae8','#ff48b0','#ffe800'],
-  paper:0.5, backdrop:0.5, exposure:0.5,
+  paper:0.5, backdrop:1, exposure:0.5,
   sun:0, sunAmt:0.62, sunSize:0.5, sunSoft:0.42, sunSpeed:0.45,
   axisX:0, axisY:16, axisSpin:-7, zoom:1
 };
@@ -700,7 +700,6 @@ void main(){
 
   // flat backdrop - no cast shadow behind the sheet
   vec3 bg=uBackCol;
-  bg*=0.99+0.022*fbm(px/2.0);
   col=mix(col,bg,uTrans*mix(0.16,0.05,clamp(lay-1.0,0.0,1.0))*mask);
   col=mix(bg,col,mask);
 
@@ -712,9 +711,9 @@ void main(){
     col*=1.0+k*0.05*(fbm(px/(3.0*uPrint))-0.5);                       // dust in the beam
   }
 
-  col+=(hash21(px+uSeed)-0.5)*(0.022+uGrain*0.03);
+  col+=(hash21(px+uSeed)-0.5)*(0.022+uGrain*0.03)*mask;
   vec2 d=vUv-0.5;
-  col*=1.0-dot(d,d)*0.13;
+  col*=1.0-dot(d,d)*0.13*mask;
   frag=vec4(clamp(col,0.0,1.0),1.0);
 }`;
 
