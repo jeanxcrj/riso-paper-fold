@@ -3,8 +3,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 :root{
-  --panel:#f4f2ee; --ink:#171512; --dim:#7d786e; --rule:#dcd8d0;
-  --stage:#c9c6c0; --accent:#4a2fd0;
+  /* Palette carried over from the jeanxcrj.com portfolio. */
+  --panel:#ffffff; --ink:#0e0e0e; --dim:#8b8b88; --rule:#e4e3e1;
+  --stage:#eeedeb; --ghost:#d9d9d6; --hover:#e6e5e2; --accent:#6a5ae8;
+  --radius:4px;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
   --face: 'Milling', var(--mono);
   --display: 'Milling Display', var(--mono);
@@ -39,42 +41,42 @@ body{margin:0;background:var(--stage);color:var(--ink);font-family:var(--face);o
 #wordmark{font-family:var(--display);font-size:15px;letter-spacing:-0.04em;font-weight:400;text-transform:uppercase;line-height:1}
 #scroll{overflow-y:auto;flex:1;min-height:0;padding-bottom:6px}
 #scroll::-webkit-scrollbar{width:9px}
-#scroll::-webkit-scrollbar-thumb{background:#cfcbc2;border:3px solid var(--panel)}
+#scroll::-webkit-scrollbar-thumb{background:var(--ghost);border:3px solid var(--panel)}
 
 .sec{border-bottom:1px solid var(--rule);padding:13px 16px 15px}
 .sec>h2{margin:0 0 11px;font-size:9px;letter-spacing:0.14em;color:var(--dim);text-transform:uppercase;font-weight:500;display:flex;justify-content:space-between}
-.sec>h2 b{color:#a9a49a;font-weight:500;letter-spacing:0.02em}
+.sec>h2 b{color:#bdbcb9;font-weight:500;letter-spacing:0.02em}
 
 .modes{display:grid;grid-template-columns:1fr 1fr;gap:4px}
-.mode{font:inherit;font-size:9.5px;letter-spacing:-0.02em;padding:7px 6px;background:#fff;border:1px solid var(--rule);color:#4b463d;cursor:pointer;text-align:left;transition:background .12s,color .12s}
-.mode:hover{background:#eeebe4}
-.mode[data-on="1"]{background:var(--ink);border-color:var(--ink);color:#f6f4ef}
+.mode{font:inherit;font-size:9.5px;letter-spacing:-0.02em;padding:7px 6px;background:#fff;border:1px solid var(--rule);border-radius:var(--radius);color:#3d3d3b;cursor:pointer;text-align:left;transition:background .12s,color .12s}
+.mode:hover{background:var(--hover)}
+.mode[data-on="1"]{background:var(--ink);border-color:var(--ink);color:#fff}
 .mode[disabled]{opacity:.3;cursor:not-allowed;background:#fff}
 .mode[disabled]:hover{background:#fff}
 
 .row{margin-bottom:11px}
 .row:last-child{margin-bottom:0}
-.lab{display:flex;justify-content:space-between;align-items:baseline;font-size:9.5px;letter-spacing:0.02em;text-transform:uppercase;color:#3f3a32;margin-bottom:5px}
+.lab{display:flex;justify-content:space-between;align-items:baseline;font-size:9.5px;letter-spacing:0.02em;text-transform:uppercase;color:#3d3d3b;margin-bottom:5px}
 .lab i{font-style:normal;color:var(--dim);font-variant-numeric:tabular-nums;font-size:9.5px;letter-spacing:-0.03em}
 input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:12px;background:transparent;cursor:ew-resize;display:block}
-input[type=range]::-webkit-slider-runnable-track{height:1px;background:#c4bfb5}
+input[type=range]::-webkit-slider-runnable-track{height:1px;background:var(--rule)}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:9px;height:9px;background:var(--ink);margin-top:-4px;border-radius:0}
 input[type=range]:hover::-webkit-slider-thumb{background:var(--accent)}
 
 .inks{display:flex;gap:6px;margin-top:2px}
-.ink{position:relative;flex:1;height:30px;border:1px solid var(--rule);overflow:hidden}
+.ink{position:relative;flex:1;height:30px;border:1px solid var(--rule);border-radius:var(--radius);overflow:hidden}
 .ink input{position:absolute;inset:-6px;width:150%;height:150%;border:0;padding:0;cursor:pointer;background:none}
 .ink[data-off="1"]{opacity:.22;pointer-events:none}
 .swatches{display:flex;flex-wrap:wrap;gap:3px;margin-top:7px}
-.sw{width:13px;height:13px;border:1px solid rgba(0,0,0,.12);cursor:pointer;padding:0}
+.sw{width:13px;height:13px;border:1px solid rgba(0,0,0,.12);border-radius:var(--radius);cursor:pointer;padding:0}
 .seg{display:flex;gap:4px}
-.seg button{flex:1;font:inherit;font-size:9.5px;padding:6px;background:#fff;border:1px solid var(--rule);color:#4b463d;cursor:pointer}
-.seg button[data-on="1"]{background:var(--ink);border-color:var(--ink);color:#f6f4ef}
+.seg button{flex:1;font:inherit;font-size:9.5px;padding:6px;background:#fff;border:1px solid var(--rule);border-radius:var(--radius);color:#3d3d3b;cursor:pointer}
+.seg button[data-on="1"]{background:var(--ink);border-color:var(--ink);color:#fff}
 .seg+.row{margin-top:11px}
 .sec[data-off="1"] .row{opacity:.28;pointer-events:none}
 
 #foot{border-top:1px solid var(--rule);padding:11px 16px;display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--panel)}
-#foot button{font:inherit;font-size:10px;letter-spacing:0.04em;text-transform:uppercase;padding:10px 6px;border:1px solid var(--ink);background:var(--ink);color:#f6f4ef;cursor:pointer}
+#foot button{font:inherit;font-size:10px;letter-spacing:0.04em;text-transform:uppercase;padding:10px 6px;border:1px solid var(--ink);border-radius:var(--radius);background:var(--ink);color:#fff;cursor:pointer}
 #foot button.ghost{background:transparent;color:var(--ink)}
 #foot button:hover{background:var(--accent);border-color:var(--accent);color:#fff}
 #foot .wide{grid-column:1/-1}
@@ -87,7 +89,7 @@ canvas.drag{cursor:grabbing}
   mix-blend-mode:multiply;transition:opacity .15s}
 #gizmo.off{opacity:0}
 #gizmo text{font:400 8px var(--face);letter-spacing:0.04em}
-#drop{position:absolute;inset:0;display:none;place-items:center;background:rgba(244,242,238,.86);border:1px dashed #7a756c;font-size:11px;letter-spacing:0.1em;text-transform:uppercase}
+#drop{position:absolute;inset:0;display:none;place-items:center;background:rgba(238,237,235,.86);border:1px dashed #bdbcb9;font-size:11px;letter-spacing:0.1em;text-transform:uppercase}
 #drop.on{display:grid}
 #err{position:absolute;inset:20px;display:none;white-space:pre-wrap;font-size:11px;color:#7a1010;background:#fff;padding:16px;overflow:auto}
 </style>
@@ -150,7 +152,7 @@ const MODES = [
 const OFF_MODES = new Set(['crumple','twist','multi','sculpt']);
 const LIVE_MODES = MODES.filter(([id])=>!OFF_MODES.has(id)).map(([id])=>id);
 
-const RISO = ['#4a2fd0','#2b1b8f','#ff48b0','#f15060','#ff6c2f','#ffe800','#00a95c',
+const RISO = ['#6a5ae8','#4a2fd0','#2b1b8f','#ff48b0','#f15060','#ff6c2f','#ffe800','#00a95c',
               '#0078bf','#3d5588','#765ba7','#00838a','#914e72','#5ec8e5','#1a1a1a'];
 
 const P = {
@@ -158,7 +160,7 @@ const P = {
   curl:0.62, curlDir:132, folds:3, sharp:0.74, distort:0.34, random:0.5,
   thick:0.34, translu:0.46, shadow:0.68,
   grain:0.5, halftone:1.45, bleed:0.42, reg:0.32, contrast:0.52,
-  inkN:1, inks:['#4a2fd0','#ff48b0','#ffe800'],
+  inkN:1, inks:['#6a5ae8','#ff48b0','#ffe800'],
   paper:0.5, backdrop:0.5, exposure:0.5,
   sun:0, sunAmt:0.62, sunSize:0.5, sunSoft:0.42, sunSpeed:0.45,
   axisX:0, axisY:16, axisSpin:-7, zoom:1
@@ -1069,7 +1071,7 @@ function renderPost(){
   gl.uniform3fv(pPost.u('uInk'),inks);
   const pt=P.paper, bd=P.backdrop;
   gl.uniform3f(pPost.u('uPaperCol'),0.94+pt*0.055,0.932+pt*0.052,0.905+pt*0.062);
-  gl.uniform3f(pPost.u('uBackCol'),0.70+bd*0.28,0.695+bd*0.28,0.685+bd*0.283);
+  gl.uniform3f(pPost.u('uBackCol'),0.78+bd*0.31,0.775+bd*0.309,0.767+bd*0.309);
   gl.uniform1f(pPost.u('uInkN'),P.inkN);
   gl.uniform1f(pPost.u('uHalf'),P.halftone);
   gl.uniform1f(pPost.u('uGrain'),P.grain);
@@ -1208,7 +1210,7 @@ RISO.forEach(h=>{
 function syncInk(){
   [...inkSeg.children].forEach((b,i)=>b.dataset.on=(i+1===P.inkN)?'1':'0');
   [...inksEl.children].forEach((d,i)=>{d.dataset.off=i<P.inkN?'0':'1';d.firstChild.value=P.inks[i];
-    d.style.outline=(i===activeInk&&i<P.inkN)?'1px solid #14130f':'none';d.style.outlineOffset='1px';});
+    d.style.outline=(i===activeInk&&i<P.inkN)?'1px solid var(--ink)':'none';d.style.outlineOffset='1px';});
   sepMat=separationMatrix(P.inks,P.inkN);
 }
 
@@ -1237,7 +1239,7 @@ function randomize(){
     P.inkN=rnd()<0.55?1:(rnd()<0.75?2:3);
     const shuf=RISO.slice().sort(()=>rnd()-0.5);
     for(let i=0;i<3;i++)P.inks[i]=shuf[i];
-    if(rnd()<0.4)P.inks[0]='#4a2fd0';
+    if(rnd()<0.4)P.inks[0]='#6a5ae8';
     syncInk();
   }
   syncModes();syncSliders();buildComposition();requestRender();
