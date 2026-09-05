@@ -28,6 +28,8 @@ body{margin:0;background:var(--stage);color:var(--ink);font-family:var(--mono);o
 .mode{font:inherit;font-size:9.5px;letter-spacing:-0.02em;padding:7px 6px;background:#fff;border:1px solid var(--rule);color:#4b463d;cursor:pointer;text-align:left;transition:background .12s,color .12s}
 .mode:hover{background:#eeebe4}
 .mode[data-on="1"]{background:var(--ink);border-color:var(--ink);color:#f6f4ef}
+.mode[disabled]{opacity:.3;cursor:not-allowed;background:#fff}
+.mode[disabled]:hover{background:#fff}
 
 .row{margin-bottom:11px}
 .row:last-child{margin-bottom:0}
@@ -126,11 +128,15 @@ const MODES = [
   ['crumple','Crumpled'],['twist','Twist strip'],
   ['multi','Multi-fold'],['sculpt','Sculpture']
 ];
+/* Modes still being tuned — listed but not selectable yet. */
+const OFF_MODES = new Set(['crumple','twist','multi','sculpt']);
+const LIVE_MODES = MODES.filter(([id])=>!OFF_MODES.has(id)).map(([id])=>id);
+
 const RISO = ['#4a2fd0','#2b1b8f','#ff48b0','#f15060','#ff6c2f','#ffe800','#00a95c',
               '#0078bf','#3d5588','#765ba7','#00838a','#914e72','#5ec8e5','#1a1a1a'];
 
 const P = {
-  mode:'multi', seed:(Math.random()*1e6)|0,
+  mode:'corner', seed:(Math.random()*1e6)|0,
   curl:0.62, curlDir:132, folds:3, sharp:0.74, distort:0.34, random:0.5,
   thick:0.34, translu:0.46, shadow:0.68,
   grain:0.5, halftone:1.45, bleed:0.42, reg:0.32, contrast:0.52,
@@ -1141,7 +1147,8 @@ const modesEl=$('#modes');
 MODES.forEach(([id,label])=>{
   const b=document.createElement('button');
   b.className='mode';b.textContent=label;b.dataset.m=id;
-  b.addEventListener('click',()=>{P.mode=id;syncModes();buildComposition();requestRender()});
+  if(OFF_MODES.has(id)){ b.disabled=true; b.title='coming soon'; }
+  else b.addEventListener('click',()=>{P.mode=id;syncModes();buildComposition();requestRender()});
   modesEl.append(b);
 });
 function syncModes(){[...modesEl.children].forEach(b=>b.dataset.on=b.dataset.m===P.mode?'1':'0')}
@@ -1197,7 +1204,7 @@ function randomize(){
   P.seed=(r()*1e6)|0;
   const rnd=mulberry32(P.seed);
   const pick=a=>a[(rnd()*a.length)|0];
-  P.mode=pick(['corner','edge','diagonal','wave','crumple','twist','multi','multi','sculpt','sculpt']);
+  P.mode=pick(LIVE_MODES);
   P.curl=0.25+rnd()*0.7;
   P.curlDir=rnd()*360;
   P.folds=1+((rnd()*7)|0);
@@ -1290,6 +1297,7 @@ window.addEventListener('resize',()=>{resize(false);requestRender()});
 try{
   const q=new URLSearchParams(location.search);
   for(const [k,v] of q) if(k in P) P[k]=(k==='mode')?v:parseFloat(v);
+  if(OFF_MODES.has(P.mode)) P.mode='corner';
   syncModes();syncInk();syncSun();syncSliders();
   resize(true);
   uploadImage(defaultImage());
