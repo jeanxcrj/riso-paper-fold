@@ -182,7 +182,7 @@ const P = {
   curl:0.62, curlDir:132, folds:3, sharp:0.74, distort:0.34, random:0.5,
   thick:0.34, translu:0.46, shadow:0.68,
   grain:0.5, halftone:1.45, bleed:0.42, reg:0.32, contrast:0.52,
-  inkN:1, inks:['#6a5ae8','#0729b0','#ffe800'],
+  inkN:1, inks:['#6a5ae8','#063ca7','#ffe800'],
   paper:0.5, backdrop:1, exposure:0.5, sat:0.5, gamma:1, sharpen:0,
   sun:0, sunAmt:0.62, sunSize:0.5, sunSoft:0.42, sunSpeed:0.45,
   axisX:0, axisY:16, axisSpin:-7, zoom:1
@@ -629,7 +629,7 @@ uniform sampler2D uA,uB,uLayers;
 uniform vec2 uRes, uSrcTexel, uRegOff[3];
 uniform vec3 uInk[3], uPaperCol, uBackCol;
 uniform float uInkN,uHalf,uGrain,uBleed,uReg,uTrans,uShadowS,uPrint,uSeed;
-uniform float uSunAmt,uSunScale,uSunSoft,uSunTime;
+uniform float uSunAmt,uSunScale,uSunSoft,uSunTime,uMaskOut;
 ${NOISE}
 vec4 sA(vec2 uv){vec2 o=uSrcTexel*0.5;
   return 0.25*(texture(uA,uv+o)+texture(uA,uv-o)+texture(uA,uv+vec2(o.x,-o.y))+texture(uA,uv+vec2(-o.x,o.y)));}
@@ -660,6 +660,7 @@ float dapple(vec2 uv){
 
 void main(){
   vec2 px=gl_FragCoord.xy;
+  vec2 spx=floor(px/uPrint);                     // screen pixel, so per-pixel noise keeps its size in exports
   // scanner platen wobble — the whole plate drifts a hair
   vec2 uv=vUv+(vec2(vnoise(vUv*2.3+uSeed),vnoise(vUv*2.1+uSeed+9.0))-0.5)*0.0035;
 
@@ -669,7 +670,7 @@ void main(){
   float shade=A0.w*1.75;
   vec4 LY=texture(uLayers,uv);
   float lay=LY.a*8.0;
-  float vr=(1.2+uTrans*9.5)/uRes.y;              // scatter radius through one ply
+  float vr=(1.2+uTrans*9.5)*uPrint/uRes.y;              // scatter radius through one ply
   vec2 vas=vec2(uRes.y/uRes.x,1.0);
   vec3 allInk=LY.rgb*0.28;
   for(int k=0;k<4;k++){
@@ -685,16 +686,16 @@ void main(){
 
   for(int i=0;i<3;i++){
     if(float(i)>=uInkN) break;
-    vec2 ruv=uv+uRegOff[i]*uReg*4.5/uRes;
+    vec2 ruv=uv+uRegOff[i]*uReg*4.5*uPrint/uRes;
     // ink wicking along paper fibre
     ruv+=(vec2(vnoise(ruv*vec2(430.0,410.0)+float(i)*13.0),vnoise(ruv*vec2(405.0,437.0)+37.0))-0.5)
-         *uBleed*2.6/uRes;
+         *uBleed*2.6*uPrint/uRes;
     float cov=chan(sA(ruv),i)*1.4;
     // ink on the plies underneath, diffused by the fibre it has to travel through
     float behind=max(chan(allInk,i)-cov,0.0);
     cov+=behind*uTrans*0.34*step(1.5,lay);
     if(uBleed>0.01){
-      float r=uBleed*2.4, bl=0.0;
+      float r=uBleed*2.4*uPrint, bl=0.0;
       for(int k=0;k<6;k++){
         float a=float(k)*1.047+float(i);
         bl+=chan(sA(ruv+vec2(cos(a),sin(a))*r/uRes),i);
@@ -708,11 +709,11 @@ void main(){
     if(i==0) cov+=uShadowS*pow(clamp(1.0-shade,0.0,1.0),1.35)*0.95;
     cov*=mix(1.0,pow(1.13,max(lay-1.0,0.0)),0.85);               // overlaps saturate
     cov*=1.0-uGrain*0.24*fbm(px/(2.3*uPrint));
-    cov-=uGrain*0.17*hash21(px*1.7+float(i)*31.0+uSeed);
+    cov-=uGrain*0.17*hash21(spx*1.7+float(i)*31.0+uSeed);
     cov=max(cov-0.045,0.0);                                      // highlights drop out
 
     float sz=uHalf*uPrint;
-    float htMix=smoothstep(0.85,2.1,sz)*(1.0-smoothstep(0.80,1.02,cov));
+    float htMix=smoothstep(0.85,2.1,uHalf)*(1.0-smoothstep(0.80,1.02,cov));
     if(htMix>0.002){
       vec2 q=rot(angs[i])*px/max(sz,0.6);
       vec2 f=fract(q)-0.5;
@@ -744,10 +745,10 @@ void main(){
     col*=1.0+k*0.05*(fbm(px/(3.0*uPrint))-0.5);                       // dust in the beam
   }
 
-  col+=(hash21(px+uSeed)-0.5)*(0.022+uGrain*0.03)*mask;
+  col+=(hash21(spx+uSeed)-0.5)*(0.022+uGrain*0.03)*mask;
   vec2 d=vUv-0.5;
   col*=1.0-dot(d,d)*0.13*mask;
-  frag=vec4(clamp(col,0.0,1.0),1.0);
+  frag=uMaskOut>0.5?vec4(vec3(mask),1.0):vec4(clamp(col,0.0,1.0),1.0);
 }`;
 
 /* ============================================================
@@ -939,7 +940,7 @@ function frameCamera(M,fov,asp){
    RENDER
    ============================================================ */
 const LIGHT=(()=>{const v=[-0.42,0.66,0.62];const l=Math.hypot(...v);return v.map(x=>x/l)})();
-let CW=0,CH=0,SS=1,printScale=1,dirty=true;
+let CW=0,CH=0,SS=1,printScale=1,maskOut=0,dirty=true;
 
 function resize(force){
   const r=cv.getBoundingClientRect();
@@ -1120,6 +1121,7 @@ function renderPost(){
   gl.uniform1f(pPost.u('uSunScale'),3.0+(1.0-P.sunSize)*15.0);
   gl.uniform1f(pPost.u('uSunSoft'),P.sunSoft);
   gl.uniform1f(pPost.u('uSunTime'),sunT);
+  gl.uniform1f(pPost.u('uMaskOut'),maskOut);
   gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
   gl.bindVertexArray(null);
 }
@@ -1295,21 +1297,48 @@ function randomize(){
 
 /* ---------- export ---------- */
 function exportPNG(scale){
-  const w=CW,h=CH;
+  const oldW=CW,oldH=CH;
   printScale=scale;
-  cv.width=w*scale;cv.height=h*scale;
-  const oldW=CW,oldH=CH;CW=cv.width;CH=cv.height;
+  CW=cv.width=oldW*scale;CH=cv.height=oldH*scale;
   allocTargets(CW,CH,Math.round(CW*SS),Math.round(CH*SS));
   render();
-  cv.toBlob(b=>{
+  const shot=document.createElement('canvas');shot.width=CW;shot.height=CH;
+  shot.getContext('2d').drawImage(cv,0,0);
+  let out=shot;
+  if(P.mode==='flat') out=cutSheet(shot);   // flat exports the sheet alone, torn edges and all
+  printScale=1;CW=oldW;CH=oldH;cv.width=oldW;cv.height=oldH;
+  allocTargets(CW,CH,Math.round(CW*SS),Math.round(CH*SS));
+  requestRender();
+  out.toBlob(b=>{
     const a=document.createElement('a');
     a.href=URL.createObjectURL(b);
     a.download='riso-paper-'+P.seed+'.png';a.click();
     setTimeout(()=>URL.revokeObjectURL(a.href),4000);
-    printScale=1;CW=oldW;CH=oldH;cv.width=oldW;cv.height=oldH;
-    allocTargets(CW,CH,Math.round(CW*SS),Math.round(CH*SS));
-    requestRender();
   },'image/png');
+}
+/* Redraws the print pass as the sheet mask, crops to it and makes the backdrop
+   transparent. Edge pixels were blended with the backdrop, so that is undone. */
+function cutSheet(shot){
+  maskOut=1;renderPost();maskOut=0;
+  const mc=document.createElement('canvas');mc.width=CW;mc.height=CH;
+  const mx=mc.getContext('2d');mx.drawImage(cv,0,0);
+  const M=mx.getImageData(0,0,CW,CH).data;
+  let x0=CW,y0=CH,x1=-1,y1=-1;
+  for(let y=0;y<CH;y++)for(let x=0;x<CW;x++) if(M[(y*CW+x)*4]>0){
+    if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
+  }
+  if(x1<0) return shot;
+  const w=x1-x0+1,h=y1-y0+1;
+  const C=shot.getContext('2d').getImageData(x0,y0,w,h), c=C.data;
+  const bd=P.backdrop, bg=[0.78+bd*0.31,0.775+bd*0.309,0.767+bd*0.309].map(v=>Math.min(v,1)*255);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const i=(y*w+x)*4, m=M[((y+y0)*CW+x+x0)*4]/255;
+    if(m>0&&m<1) for(let k=0;k<3;k++) c[i+k]=(c[i+k]-bg[k]*(1-m))/m;
+    c[i+3]=m*255;
+  }
+  const out=document.createElement('canvas');out.width=w;out.height=h;
+  out.getContext('2d').putImageData(C,0,0);
+  return out;
 }
 
 /* ---------- events ---------- */
