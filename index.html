@@ -1203,7 +1203,10 @@ MODES.forEach(([id,label])=>{
   const b=document.createElement('button');
   b.className='mode';b.textContent=label;b.dataset.m=id;
   if(OFF_MODES.has(id)){ b.disabled=true; b.title='coming soon'; }
-  else b.addEventListener('click',()=>{P.mode=id;syncModes();buildComposition();requestRender()});
+  else b.addEventListener('click',()=>{
+    P.mode=id;
+    if(id==='flat'){P.axisX=0;P.axisY=0;P.axisSpin=0;syncSliders()}  // flat faces the camera square-on
+    syncModes();buildComposition();requestRender()});
   modesEl.append(b);
 });
 function syncModes(){[...modesEl.children].forEach(b=>b.dataset.on=b.dataset.m===P.mode?'1':'0')}
@@ -1387,6 +1390,7 @@ try{
   const q=new URLSearchParams(location.search);
   for(const [k,v] of q) if(k in P) P[k]=(k==='mode')?v:parseFloat(v);
   if(OFF_MODES.has(P.mode)) P.mode='corner';
+  if(P.mode==='flat') for(const k of ['axisX','axisY','axisSpin']) if(!q.has(k)) P[k]=0;
   syncModes();syncInk();syncSun();syncSliders();placeSun();
   resize(true);
   uploadImage(defaultImage());
