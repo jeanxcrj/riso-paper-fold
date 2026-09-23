@@ -17,6 +17,8 @@ Open `index.html` in any browser that supports WebGL2 — no build step, no depe
 | `R` / `Enter` | randomize |
 | drop / paste an image | print it onto the sheet |
 
+The **Image** section tunes the upload before it's separated into inks — brightness, contrast, saturation, midtones (gamma) and sharpen — with a reset. The **Flat** deformation mode lays the sheet out with no curl, folds, wrinkle or axis tilt — square-on to the camera.
+
 ## How it renders
 
 Four passes, all in `index.html`:
