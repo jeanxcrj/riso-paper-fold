@@ -46,6 +46,8 @@ body{margin:0;background:var(--stage);color:var(--ink);font-family:var(--face);o
 .sec{border-bottom:1px solid var(--rule);padding:13px 16px 15px}
 .sec>h2{margin:0 0 11px;font-size:9px;letter-spacing:0.05em;color:var(--dim);text-transform:uppercase;font-weight:500;display:flex;justify-content:space-between}
 .sec>h2 b{color:#bdbcb9;font-weight:500;letter-spacing:0.01em}
+#imgReset{cursor:pointer}
+#imgReset:hover{color:var(--accent)}
 
 .modes{display:grid;grid-template-columns:1fr 1fr;gap:4px}
 .mode{font:inherit;font-size:9.5px;letter-spacing:-0.02em;padding:7px 6px;background:#fff;border:1px solid var(--rule);border-radius:var(--radius);color:#3d3d3b;cursor:pointer;text-align:left;transition:background .12s,color .12s}
@@ -125,6 +127,7 @@ canvas.drag{cursor:grabbing}
       </div>
       <div class="sec" id="secPaper"><h2>Sheet</h2></div>
       <div class="sec" id="secAxis"><h2>Axis</h2></div>
+      <div class="sec" id="secImage"><h2>Image<b id="imgReset" title="reset image adjustments">reset</b></h2></div>
       <div class="sec" id="secPrint"><h2>Print</h2></div>
       <div class="sec">
         <h2>Ink</h2>
@@ -161,14 +164,15 @@ const TAU = Math.PI*2, D2R = Math.PI/180;
    ============================================================ */
 const MAXF = 10;
 const MODES = [
-  ['corner','Corner curl'],['edge','Edge curl'],
+  ['flat','Flat'],['corner','Corner curl'],['edge','Edge curl'],
   ['diagonal','Diagonal fold'],['wave','Loose wave'],
   ['crumple','Crumpled'],['twist','Twist strip'],
   ['multi','Multi-fold'],['sculpt','Sculpture']
 ];
 /* Modes still being tuned — listed but not selectable yet. */
 const OFF_MODES = new Set(['crumple','twist','multi','sculpt']);
-const LIVE_MODES = MODES.filter(([id])=>!OFF_MODES.has(id)).map(([id])=>id);
+/* Modes Randomize may land on — Flat is a choice, never a surprise. */
+const LIVE_MODES = MODES.filter(([id])=>!OFF_MODES.has(id)&&id!=='flat').map(([id])=>id);
 
 const RISO = ['#6a5ae8','#4a2fd0','#2b1b8f','#ff48b0','#f15060','#ff6c2f','#ffe800','#00a95c',
               '#0078bf','#3d5588','#765ba7','#00838a','#914e72','#5ec8e5','#1a1a1a'];
@@ -179,7 +183,7 @@ const P = {
   thick:0.34, translu:0.46, shadow:0.68,
   grain:0.5, halftone:1.45, bleed:0.42, reg:0.32, contrast:0.52,
   inkN:1, inks:['#6a5ae8','#ff48b0','#ffe800'],
-  paper:0.5, backdrop:1, exposure:0.5,
+  paper:0.5, backdrop:1, exposure:0.5, sat:0.5, gamma:1, sharpen:0,
   sun:0, sunAmt:0.62, sunSize:0.5, sunSoft:0.42, sunSpeed:0.45,
   axisX:0, axisY:16, axisSpin:-7, zoom:1
 };
@@ -204,7 +208,13 @@ const SLIDERS = {
     ['halftone','Halftone size',0,8,0.05,v=>v<0.9?'off':v.toFixed(1)+'px'],
     ['bleed','Ink bleed',0,1,0.01],
     ['reg','Registration offset',0,1,0.01],
+  ],
+  secImage:[
+    ['exposure','Brightness',0,1,0.01],
     ['contrast','Contrast',0,1,0.01],
+    ['sat','Saturation',0,1,0.01],
+    ['gamma','Midtones',0.4,2.5,0.01,v=>v.toFixed(2)],
+    ['sharpen','Sharpen',0,1,0.01],
   ],
   secSun:[
     ['sunAmt','Sun strength',0,1,0.01],
@@ -307,6 +317,9 @@ function buildComposition(){
   let twistK=0, twistAxis=[1,0], wrinkleBoost=1;
 
   switch(P.mode){
+    case 'flat':
+      wrinkleBoost=0;
+      break;
     case 'corner':{
       const cx=Math.sign(dx||1), cy=Math.sign(dy||1);
       const n=[cx*hw, cy*hh];
@@ -491,10 +504,16 @@ vec3 deform(vec2 uv){
 const COVERAGE = `
 uniform sampler2D uImg;
 uniform mat3 uSep;
-uniform float uInkN, uContrast, uExposure, uTrans;
+uniform float uInkN, uContrast, uExposure, uTrans, uSat, uGamma, uSharpen;
 vec3 coverage(vec2 uv, bool front){
   vec2 iuv = front? uv : vec2(1.0-uv.x, uv.y);
-  vec3 img=texture(uImg,vec2(iuv.x,1.0-iuv.y)).rgb;
+  vec2 tuv=vec2(iuv.x,1.0-iuv.y);
+  vec3 img=texture(uImg,tuv).rgb;
+  // unsharp mask against a coarser mip
+  img+=(img-textureLod(uImg,tuv,2.5).rgb)*uSharpen*2.5;
+  float luma=dot(img,vec3(0.2126,0.7152,0.0722));
+  img=mix(vec3(luma),img,uSat*2.0);
+  img=pow(clamp(img,0.0,1.0),vec3(1.0/uGamma));
   img=clamp((img-0.5)*(0.72+uContrast*1.85)+0.5+(uExposure-0.5)*0.55,0.002,1.0);
   vec3 cov=clamp(uSep*log(max(img,vec3(0.02))),0.0,1.38);
   if(uInkN<2.5) cov.z=0.0;
@@ -1026,6 +1045,9 @@ function render(){
   gl.uniform1f(pScene.u('uInkN'),P.inkN);
   gl.uniform1f(pScene.u('uContrast'),P.contrast);
   gl.uniform1f(pScene.u('uExposure'),P.exposure);
+  gl.uniform1f(pScene.u('uSat'),P.sat);
+  gl.uniform1f(pScene.u('uGamma'),P.gamma);
+  gl.uniform1f(pScene.u('uSharpen'),P.sharpen);
   gl.uniform1f(pScene.u('uTrans'),P.translu);
   gl.uniform1f(pScene.u('uShadowS'),P.shadow);
   gl.uniform1f(pScene.u('uThick'),P.thick);
@@ -1049,6 +1071,9 @@ function render(){
   gl.uniform1f(pLayers.u('uInkN'),P.inkN);
   gl.uniform1f(pLayers.u('uContrast'),P.contrast);
   gl.uniform1f(pLayers.u('uExposure'),P.exposure);
+  gl.uniform1f(pLayers.u('uSat'),P.sat);
+  gl.uniform1f(pLayers.u('uGamma'),P.gamma);
+  gl.uniform1f(pLayers.u('uSharpen'),P.sharpen);
   gl.uniform1f(pLayers.u('uTrans'),P.translu);
   gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,imgTex);
   gl.uniform1i(pLayers.u('uImg'),0);
@@ -1233,6 +1258,8 @@ function syncInk(){
 }
 
 function syncSliders(){for(const k in inputs){inputs[k].inp.value=P[k];inputs[k].show()}}
+const IMAGE_DEFAULTS={exposure:0.5,contrast:0.52,sat:0.5,gamma:1,sharpen:0};
+$('#imgReset').addEventListener('click',()=>{Object.assign(P,IMAGE_DEFAULTS);syncSliders();requestRender()});
 
 /* ---------- randomize ---------- */
 function randomize(){
