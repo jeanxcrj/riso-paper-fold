@@ -178,7 +178,7 @@ const RISO = ['#6a5ae8','#4a2fd0','#2b1b8f','#ff48b0','#f15060','#ff6c2f','#ffe8
               '#0078bf','#3d5588','#765ba7','#00838a','#914e72','#5ec8e5','#1a1a1a'];
 
 const P = {
-  mode:'corner', seed:(Math.random()*1e6)|0,
+  mode:'flat', seed:(Math.random()*1e6)|0,
   curl:0.62, curlDir:132, folds:3, sharp:0.74, distort:0.34, random:0.5,
   thick:0.34, translu:0.46, shadow:0.68,
   grain:0.5, halftone:1.45, bleed:0.42, reg:0.32, contrast:0.52,
@@ -1389,7 +1389,7 @@ window.addEventListener('resize',()=>{resize(false);requestRender()});
 try{
   const q=new URLSearchParams(location.search);
   for(const [k,v] of q) if(k in P) P[k]=(k==='mode')?v:parseFloat(v);
-  if(OFF_MODES.has(P.mode)) P.mode='corner';
+  if(OFF_MODES.has(P.mode)) P.mode='flat';
   if(P.mode==='flat') for(const k of ['axisX','axisY','axisSpin']) if(!q.has(k)) P[k]=0;
   syncModes();syncInk();syncSun();syncSliders();placeSun();
   resize(true);
